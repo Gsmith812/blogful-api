@@ -3,6 +3,7 @@ const knex = require('knex');
 const app = require('../src/app');
 const supertest = require('supertest');
 const { makeArticlesArray, makeMaliciousArticle } = require('./articles.fixtures');
+const { makeUsersArray } = require('./users.fixtures');
 
 describe('Article Endpoints', () => {
     let db;
@@ -17,9 +18,9 @@ describe('Article Endpoints', () => {
 
     after('disconnect from db', () => db.destroy());
 
-    before('clean the table', () => db('blogful_articles').truncate());
+    before('clean the table', () => db.raw('TRUNCATE blogful_articles, blogful_users, blogful_comments RESTART IDENTITY CASCADE'));
 
-    afterEach('cleanup', () => db('blogful_articles').truncate());
+    afterEach('cleanup', () => db.raw('TRUNCATE blogful_articles, blogful_users, blogful_comments RESTART IDENTITY CASCADE'));
 
     describe(`GET /api/articles`, () => {
         context(`Given no articles`, () => {
@@ -30,15 +31,21 @@ describe('Article Endpoints', () => {
             });
         });
         context('Given there are articles in the database', () => {
+            const testUsers = makeUsersArray();
             const testArticles = makeArticlesArray();
     
             beforeEach('insert articles', () => {
                 return db
-                    .into('blogful_articles')
-                    .insert(testArticles)
+                    .into('blogful_users')
+                    .insert(testUsers)
+                    .then(() => {
+                        return db
+                            .into('blogful_articles')
+                            .insert(testArticles)
+                    })
             });
     
-            afterEach('cleanup', () => db('blogful_articles').truncate());
+            afterEach('cleanup', () => db.raw('TRUNCATE blogful_articles, blogful_users, blogful_comments RESTART IDENTITY CASCADE'));
     
             it('GET /api/articles responds with 200 and all of the articles', () => {
                 return supertest(app)
@@ -48,13 +55,19 @@ describe('Article Endpoints', () => {
         });
 
         context(`Given an XSS attack article`, () => {
+            const testUsers = makeUsersArray();
             const { maliciousArticle, expectedArticle } = makeMaliciousArticle();
 
-            beforeEach('insert malicious article', () => {
+            beforeEach('insert articles', () => {
                 return db
-                    .into('blogful_articles')
-                    .insert([ maliciousArticle ])
-            })
+                    .into('blogful_users')
+                    .insert(testUsers)
+                    .then(() => {
+                        return db
+                            .into('blogful_articles')
+                            .insert([maliciousArticle])
+                    })
+            });
 
             it(`removes XSS attack content`, () => {
                 return supertest(app)
@@ -78,12 +91,18 @@ describe('Article Endpoints', () => {
             })
         });
         context('Given there are articles in the database', () => {
+            const testUsers = makeUsersArray();
             const testArticles = makeArticlesArray();
 
             beforeEach('insert articles', () => {
                 return db
-                    .into('blogful_articles')
-                    .insert(testArticles)
+                    .into('blogful_users')
+                    .insert(testUsers)
+                    .then(() => {
+                        return db
+                            .into('blogful_articles')
+                            .insert(testArticles)
+                    })
             });
 
             it('responds with 200 and the specified article', () => {
@@ -96,13 +115,19 @@ describe('Article Endpoints', () => {
         });
 
         context(`Given an XSS attack article`, () => {
+            const testUsers = makeUsersArray();
             const { maliciousArticle, expectedArticle } = makeMaliciousArticle();
 
-            beforeEach('insert malicious article', () => {
+            beforeEach('insert articles', () => {
                 return db
-                    .into('blogful_articles')
-                    .insert([ maliciousArticle ])
-            })
+                    .into('blogful_users')
+                    .insert(testUsers)
+                    .then(() => {
+                        return db
+                            .into('blogful_articles')
+                            .insert([maliciousArticle])
+                    })
+            });
 
             it(`removes XSS attack content`, () => {
                 return supertest(app)
@@ -189,13 +214,19 @@ describe('Article Endpoints', () => {
             })
         })
         context(`Given there are articles in the database`, () => {
+            const testUsers = makeUsersArray();
             const testArticles = makeArticlesArray()
 
-            beforeEach('insert test articles', () => {
+            beforeEach('insert articles', () => {
                 return db
-                    .into('blogful_articles')
-                    .insert(testArticles)
-            })
+                    .into('blogful_users')
+                    .insert(testUsers)
+                    .then(() => {
+                        return db
+                            .into('blogful_articles')
+                            .insert(testArticles)
+                    })
+            });
 
             it(`responds with 204 and removes the article`, () => {
                 const idToRemove = 2
@@ -212,7 +243,7 @@ describe('Article Endpoints', () => {
         });
     });
 
-    describe.only(`PATCH /api/articles/:article_id`, () => {
+    describe(`PATCH /api/articles/:article_id`, () => {
         context(`Given no articles`, () => {
             it(`responds with 404`, () => {
                 const articleId = 123456
@@ -223,13 +254,19 @@ describe('Article Endpoints', () => {
         })
 
         context(`Given there are articles in the db`, () => {
+            const testUsers = makeUsersArray();
             const testArticles = makeArticlesArray();
 
-            beforeEach(`insert articles`, () => {
+            beforeEach('insert articles', () => {
                 return db
-                    .into('blogful_articles')
-                    .insert(testArticles)
-            })
+                    .into('blogful_users')
+                    .insert(testUsers)
+                    .then(() => {
+                        return db
+                            .into('blogful_articles')
+                            .insert(testArticles)
+                    })
+            });
 
             it(`responds with 204 and updates the article`, () => {
                 const idToUpdate = 2
